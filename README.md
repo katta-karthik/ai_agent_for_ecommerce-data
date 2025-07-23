@@ -15,6 +15,7 @@ A modular AI-powered analytics system for e-commerce data using Groq AI and Stre
 │ • Average RoAS: 16.9x             • Uptime: 99.9%               │
 │ • Data Points: 4,000+ records     • User Satisfaction: 9.5/10   │
 ├─────────────────────────────────────────────────────────────────┤
+│    SYSTEM FLOW                                                  │
 │ • Data Points: 4,000+ records     • User Satisfaction: 9.5/10   │
 │                                                                 │
 │ User Question → 🧠 Groq AI → 🔍 SQL → 💾 Database → 📊 Charts │
