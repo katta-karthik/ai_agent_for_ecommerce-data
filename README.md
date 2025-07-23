@@ -146,4 +146,4 @@ curl -X POST "http://localhost:8000/ask" ^
 
 ## 🚀 Repository
 
-GitHub: https://github.com/katta-karthik/ecommerce_data_agent
+GitHub: https://github.com/katta-karthik/ai_agent_for_ecommerce-data
