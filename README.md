@@ -6,28 +6,28 @@ A modular AI-powered analytics system for e-commerce data using Groq AI and Stre
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                 E-COMMERCE AI ANALYTICS SYSTEM                 │
-│                    Natural Language → SQL → Insights           │
+│                 E-COMMERCE AI ANALYTICS SYSTEM                  │
+│                    Natural Language → SQL → Insights            │
 ├─────────────────────────────────────────────────────────────────┤
 │ 📊 KEY METRICS                    🚀 PERFORMANCE               │
-│ • Total Sales: $645,000+          • Response Time: <2s         │
-│ • Products: 100+ items            • SQL Accuracy: 95%+         │
-│ • Average RoAS: 16.9x             • Uptime: 99.9%              │
-│ • Data Points: 4,000+ records     • User Satisfaction: 9.5/10  │
+│ • Total Sales: $645,000+          • Response Time: <2s          │
+│ • Products: 100+ items            • SQL Accuracy: 95%+          │
+│ • Average RoAS: 16.9x             • Uptime: 99.9%               │
+│ • Data Points: 4,000+ records     • User Satisfaction: 9.5/10   │
 ├─────────────────────────────────────────────────────────────────┤
-│ 🔄 SYSTEM FLOW                                                 │
+│ • Data Points: 4,000+ records     • User Satisfaction: 9.5/10   │
 │                                                                 │
 │ User Question → 🧠 Groq AI → 🔍 SQL → 💾 Database → 📊 Charts │
-│       ↓              ↓           ↓         ↓          ↓        │
-│   Natural        LLaMA 3.1    Auto-Gen   SQLite    Matplotlib  │
-│   Language        70B         Queries               Seaborn    │
+│       ↓              ↓           ↓         ↓          ↓         │
+│   Natural        LLaMA 3.1    Auto-Gen   SQLite    Matplotlib   │
+│   Language        70B         Queries               Seaborn     │
 ├─────────────────────────────────────────────────────────────────┤
-│ 🛠️ TECH STACK                    ✨ FEATURES                  │
-│ • Frontend: Streamlit             • Natural Language Queries   │
-│ • AI Engine: Groq (LLaMA 3.1)    • Real-time Analytics       │
-│ • Backend: FastAPI               • Interactive Visualizations │
-│ • Database: SQLite                • Professional UI/UX         │
-│ • Charts: Matplotlib + Seaborn   • RESTful API Integration    │
+│ 🛠️ TECH STACK                    ✨ FEATURES                   │
+│ • Frontend: Streamlit             • Natural Language Queries    │
+│ • AI Engine: Groq (LLaMA 3.1)    • Real-time Analytics          │
+│ • Backend: FastAPI               • Interactive Visualizations   │
+│ • Database: SQLite                • Professional UI/UX          │
+│ • Charts: Matplotlib + Seaborn   • RESTful API Integration      │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
