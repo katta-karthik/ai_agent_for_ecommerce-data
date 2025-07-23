@@ -11,3 +11,4 @@ pydantic
 matplotlib
 seaborn
 python-dotenv
+requests

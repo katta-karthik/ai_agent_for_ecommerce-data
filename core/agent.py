@@ -20,9 +20,9 @@ class EcommerceAIAgent:
             print("   Create a .env file with: GROQ_API_KEY=your_key_here")
         
         self.llm = ChatGroq(
-            model_name="llama3-70b-8192",
+            model_name="llama-3.1-8b-instant", 
             temperature=0,
-            max_tokens=512,
+            max_tokens=150,
             groq_api_key=groq_api_key
         )
         
@@ -41,10 +41,10 @@ INSTRUCTIONS:
 3. For "top" queries, use ORDER BY with LIMIT
 4. For averages, use AVG() function
 5. Use proper column names from schema
-6. Return only the SQL query without explanations
+6. Return ONLY the raw SQL query - NO markdown, NO explanations, NO formatting
 
 Question: {input}
-SQL Query:"""
+SQLQuery:"""
         )
         
         self.sql_chain = SQLDatabaseChain.from_llm(
@@ -52,16 +52,25 @@ SQL Query:"""
             db=self.db,
             prompt=sql_prompt,
             verbose=False,
-            return_intermediate_steps=False
+            return_intermediate_steps=True
         )
     
     def query_database(self, question: str):
         try:
             result = self.sql_chain({"query": question})
+           
+            sql_query = ""
+            if 'intermediate_steps' in result and result['intermediate_steps']:
+             
+                if len(result['intermediate_steps']) > 0:
+                    sql_query = result['intermediate_steps'][0].get('sql_cmd', '')
+        
+            if not sql_query:
+                sql_query = result.get('result', '')
             
-            sql_query = result.get('intermediate_steps', [{}])[0].get('sql_cmd', '') or result.get('result', '')
+            sql_query = self.clean_sql_query(sql_query)
             
-            if sql_query.startswith('SELECT'):
+            if sql_query and sql_query.strip().upper().startswith('SELECT'):
                 conn = sqlite3.connect(self.db_path)
                 df = pd.read_sql_query(sql_query, conn)
                 conn.close()
@@ -77,3 +86,19 @@ SQL Query:"""
                 
         except Exception as e:
             return {'error': str(e)}
+    
+    def clean_sql_query(self, sql_text: str) -> str:
+        """Clean SQL query by removing markdown formatting and extra whitespace"""
+        if not sql_text:
+            return ""
+     
+        sql_text = sql_text.replace("```sql", "").replace("```", "")
+        sql_text = sql_text.replace("```SQL", "").replace("SQL:", "").replace("SQLQuery:", "")
+        
+       
+        sql_text = " ".join(sql_text.split())
+        
+        
+        sql_text = sql_text.strip()
+        
+        return sql_text

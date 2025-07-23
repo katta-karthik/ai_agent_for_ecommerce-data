@@ -24,11 +24,11 @@ def main():
             
         agent = get_agent()
         
-        with st.spinner("🤖 Analyzing your data..."):
+        with st.spinner(" Analyzing your data..."):
             result = agent.query_database(search_query)
         
         if result.get('error'):
-            st.error(f"❌ Error: {result['error']}")
+            st.error(f" Error: {result['error']}")
         else:
             st.session_state.current_results = result.get('results')
             st.session_state.current_query = search_query
