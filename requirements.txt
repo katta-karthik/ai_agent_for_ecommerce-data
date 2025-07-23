@@ -1,0 +1,13 @@
+pandas
+streamlit
+plotly
+langchain
+langchain-community
+langchain-experimental
+langchain-groq
+fastapi
+uvicorn
+pydantic
+matplotlib
+seaborn
+python-dotenv
