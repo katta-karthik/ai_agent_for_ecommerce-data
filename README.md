@@ -51,9 +51,6 @@ ecommerce-ai-analytics/
 │   └── *.csv            # Raw data files
 ├── app.py               # Main Streamlit application
 ├── api.py               # FastAPI REST endpoints
-├── setup.bat            # Windows setup script
-├── run.bat              # Run web interface
-├── run-api.bat          # Run API server
 ├── .env                 # Environment variables (keep secret!)
 ├── .env.example         # Environment template
 ├── .gitignore           # Git ignore file
@@ -87,25 +84,9 @@ setup.bat
 GROQ_API_KEY=gsk_your_actual_key_here
 ```
 
-### ▶️ Run the Application
-```cmd
-# Start the web interface:
-run.bat
+## 📋 Manual Setup 
 
-# OR start the API server:
-run-api.bat
-```
-
-### 🌐 Access the Application
-- **Web Interface:** http://localhost:8501
-- **API Endpoint:** http://localhost:8000
-- **API Documentation:** http://localhost:8000/docs
-
----
-
-## 📋 Manual Setup (Alternative)
-
-If you prefer manual installation:
+for manual installation:
 
 ```cmd
 # Create virtual environment
