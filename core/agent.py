@@ -1,104 +1,99 @@
-from langchain_groq import ChatGroq
-from langchain_community.utilities import SQLDatabase
-from langchain_experimental.sql import SQLDatabaseChain
-from langchain.prompts import PromptTemplate
-import sqlite3
-import pandas as pd
+"""E-commerce AI Analytics Agent orchestrated with LangGraph."""
+
 import os
+import pandas as pd
+from typing import Dict, Any, Optional
 from dotenv import load_dotenv
 
+from core.graph import create_analytics_graph
+from core.tools import (
+    execute_sql_query,
+    get_database_schema,
+    get_sales_kpi_summary,
+    DEFAULT_DB_PATH,
+)
+
+
 class EcommerceAIAgent:
-    def __init__(self, db_path="ecommerce_optimized.db"):
+    """Agentic AI Data Analyst powered by LangGraph, LangChain, and SQLite."""
+
+    def __init__(self, db_path: str = DEFAULT_DB_PATH):
         load_dotenv()
         self.db_path = db_path
-        self.setup_components()
-        
-    def setup_components(self):
-        groq_api_key = os.getenv("GROQ_API_KEY")
-        if not groq_api_key:
-            print("⚠️  WARNING: GROQ_API_KEY not found in .env file")
-            print("   Create a .env file with: GROQ_API_KEY=your_key_here")
-        
-        self.llm = ChatGroq(
-            model_name="llama-3.1-8b-instant", 
-            temperature=0,
-            max_tokens=150,
-            groq_api_key=groq_api_key
-        )
-        
-        self.db = SQLDatabase.from_uri(f"sqlite:///{self.db_path}")
-        
-        sql_prompt = PromptTemplate(
-            input_variables=["input", "table_info", "dialect"],
-            template="""Given an input question, create a syntactically correct {dialect} query to run.
+        self.graph = create_analytics_graph()
+        self.google_api_key = os.getenv("GOOGLE_API_KEY")
+        self.groq_api_key = os.getenv("GROQ_API_KEY")
 
-DATABASE SCHEMA:
-{table_info}
+        if self.google_api_key:
+            print("[INFO] Active LLM Provider: Google Gemini (gemini-2.5-flash)")
+        elif self.groq_api_key:
+            print("[INFO] Active LLM Provider: Groq (llama-3.1-8b-instant)")
+        else:
+            print("[NOTICE] No LLM API key found in .env (GOOGLE_API_KEY or GROQ_API_KEY).")
+            print("         Using built-in SQL planning rules until an API key is configured.")
 
-INSTRUCTIONS:
-1. Only use tables and columns that exist in the schema
-2. Use aggregate functions (SUM, AVG, COUNT) appropriately
-3. For "top" queries, use ORDER BY with LIMIT
-4. For averages, use AVG() function
-5. Use proper column names from schema
-6. Return ONLY the raw SQL query - NO markdown, NO explanations, NO formatting
+    def run(self, question: str) -> Dict[str, Any]:
+        """Execute the full LangGraph agent workflow for an analytical question."""
+        initial_state = {
+            "question": question,
+            "db_path": self.db_path,
+            "plan": None,
+            "sql_query": "",
+            "query_result": None,
+            "columns": [],
+            "row_count": 0,
+            "error": None,
+            "retry_count": 0,
+            "answer": "",
+            "business_insight": "",
+            "recommendations": None,
+            "needs_visualization": False,
+            "visualization_type": None,
+            "steps": [],
+        }
 
-Question: {input}
-SQLQuery:"""
-        )
-        
-        self.sql_chain = SQLDatabaseChain.from_llm(
-            llm=self.llm,
-            db=self.db,
-            prompt=sql_prompt,
-            verbose=False,
-            return_intermediate_steps=True
-        )
-    
-    def query_database(self, question: str):
         try:
-            result = self.sql_chain({"query": question})
-           
-            sql_query = ""
-            if 'intermediate_steps' in result and result['intermediate_steps']:
-             
-                if len(result['intermediate_steps']) > 0:
-                    sql_query = result['intermediate_steps'][0].get('sql_cmd', '')
-        
-            if not sql_query:
-                sql_query = result.get('result', '')
+            final_state = self.graph.invoke(initial_state)
             
-            sql_query = self.clean_sql_query(sql_query)
-            
-            if sql_query and sql_query.strip().upper().startswith('SELECT'):
-                conn = sqlite3.connect(self.db_path)
-                df = pd.read_sql_query(sql_query, conn)
-                conn.close()
-                
-                return {
-                    'question': question,
-                    'sql': sql_query,
-                    'results': df,
-                    'row_count': len(df)
-                }
-            else:
-                return {'error': f"Invalid SQL generated: {sql_query}"}
-                
+            rows = final_state.get("query_result", [])
+            df = pd.DataFrame(rows) if rows else pd.DataFrame()
+
+            return {
+                "question": question,
+                "answer": final_state.get("answer", "Analysis complete."),
+                "business_insight": final_state.get("business_insight", ""),
+                "recommendations": final_state.get("recommendations"),
+                "sql": final_state.get("sql_query", ""),
+                "results": df,
+                "row_count": final_state.get("row_count", len(df)),
+                "needs_visualization": final_state.get("needs_visualization", False),
+                "visualization_type": final_state.get("visualization_type"),
+                "steps": final_state.get("steps", []),
+                "error": final_state.get("error"),
+            }
         except Exception as e:
-            return {'error': str(e)}
-    
-    def clean_sql_query(self, sql_text: str) -> str:
-        """Clean SQL query by removing markdown formatting and extra whitespace"""
-        if not sql_text:
-            return ""
-     
-        sql_text = sql_text.replace("```sql", "").replace("```", "")
-        sql_text = sql_text.replace("```SQL", "").replace("SQL:", "").replace("SQLQuery:", "")
-        
-       
-        sql_text = " ".join(sql_text.split())
-        
-        
-        sql_text = sql_text.strip()
-        
-        return sql_text
+            return {
+                "question": question,
+                "answer": "An unexpected error occurred during analysis.",
+                "business_insight": "",
+                "recommendations": None,
+                "sql": "",
+                "results": pd.DataFrame(),
+                "row_count": 0,
+                "needs_visualization": False,
+                "visualization_type": None,
+                "steps": [f"❌ Pipeline exception: {str(e)}"],
+                "error": str(e),
+            }
+
+    def query_database(self, question: str) -> Dict[str, Any]:
+        """Backward-compatible method matching original repository interface."""
+        return self.run(question)
+
+    def get_schema(self) -> str:
+        """Inspect database structure."""
+        return get_database_schema(self.db_path)
+
+    def get_summary(self) -> Dict[str, Any]:
+        """Retrieve key business KPIs."""
+        return get_sales_kpi_summary(self.db_path)

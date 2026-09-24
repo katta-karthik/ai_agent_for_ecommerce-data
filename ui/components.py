@@ -1,124 +1,189 @@
+"""Streamlit UI components for E-commerce AI Analytics Agent."""
+
 import streamlit as st
 import time
+from core.tools import get_sales_kpi_summary
+
 
 def setup_page_config():
     st.set_page_config(
-        page_title="E-commerce AI Analytics",
+        page_title="E-commerce AI Analytics — Agentic Data Analyst",
         page_icon="🛒",
         layout="wide",
         initial_sidebar_state="expanded"
     )
 
+
 def create_sidebar():
     with st.sidebar:
-        st.title("🛒 Questions")
-        
+        st.title("🛒 Agentic Analytics")
+        st.caption("Powered by **LangGraph** & **SQLite**")
+
+        # Live Dataset Overview
+        try:
+            summary = get_sales_kpi_summary()
+            if "error" not in summary:
+                st.markdown("### 📈 Store Snapshot")
+                col_a, col_b = st.columns(2)
+                col_a.metric("Total Sales", f"${summary['total_sales_usd']:,.0f}")
+                col_b.metric("Blended ROAS", f"{summary['blended_roas']}x")
+                col_c, col_d = st.columns(2)
+                col_c.metric("Active Products", f"{summary['total_products']}")
+                col_d.metric("Units Ordered", f"{summary['total_units_ordered']:,}")
+                st.caption(f"📅 Dates: {summary['date_range']}")
+                st.divider()
+        except Exception:
+            pass
+
         st.markdown("### 📊 Demo Questions")
         demo_questions = [
             "What is my total sales?",
-            "Calculate the average Return on Ad Spend", 
-            "Which products have the highest click-through rate?",
+            "Show monthly sales trend",
+            "Which products generated the highest revenue?",
+            "What is the average Return on Ad Spend (ROAS)?",
+            "Show products with the highest click-through rate",
         ]
-        
+
         for q in demo_questions:
             if st.button(q, key=f"demo_{q}", use_container_width=True):
                 st.session_state.search_query = q
-        
+                st.rerun()
+
         st.markdown("### 🔍 Suggested Questions")
         suggested_questions = [
             "Show me the top 10 products by total sales",
-            "Which products have sales over $50,000?",
-            "What are the 5 best performing ads by RoAS?",
+            "What are the best performing products by ROAS?",
             "Show me products with the lowest CPC",
-            "Which products are eligible for advertising?",
-            "Show me the worst performing products",
-            "What is the average revenue per product?",
-            "Show me products with highest lifetime sales"
+            "How many products are eligible for advertising?",
+            "What is the daily sales breakdown over time?",
+            "Compare ad sales versus organic sales"
         ]
-        
+
         for q in suggested_questions:
             if st.button(q, key=f"suggested_{q}", use_container_width=True):
                 st.session_state.search_query = q
+                st.rerun()
+
+        st.divider()
+        st.markdown("### 🛠️ Architecture")
+        st.markdown(
+            """
+            - **Orchestration**: LangGraph StateGraph
+            - **Tools**: Safe Read-Only SQL, Schema, KPIs
+            - **Correction**: Automatic SQL Retry Loop
+            - **Protocol**: MCP Analytical Server
+            """
+        )
+
 
 def create_search_interface():
     st.title("🛒 E-commerce AI Analytics")
-    
-    col1, col2, col3 = st.columns([1, 3, 1])
-    
+    st.markdown("*Ask any business or analytics question in natural language. The LangGraph agent plans, validates, executes SQL, and generates insights.*")
+
+    col1, col2, col3 = st.columns([1, 4, 1])
+
     with col2:
         if 'search_query' not in st.session_state:
             st.session_state.search_query = ""
-        
+
         search_query = st.text_input(
             "Ask a question about your e-commerce data:",
             value=st.session_state.search_query,
-            placeholder="e.g., What are my top selling products?",
+            placeholder="e.g., Which products generated the highest revenue?",
             key="main_search"
         )
-        
-        col_search, col_clear = st.columns([2, 1])
-        
+
+        col_search, col_clear = st.columns([3, 1])
+
         with col_search:
-            search_button = st.button("🔍 Search", use_container_width=True, type="primary")
-        
+            search_button = st.button("🚀 Analyze with Agent", use_container_width=True, type="primary")
+
         with col_clear:
             if st.button("🗑️ Clear", use_container_width=True):
                 st.session_state.search_query = ""
+                st.session_state.current_results = None
+                st.session_state.current_result_obj = None
                 st.rerun()
-    
+
     return search_query, search_button
 
-def stream_text(text, placeholder):
-    displayed_text = ""
-    for char in text:
-        displayed_text += char
-        placeholder.markdown(displayed_text)
-        time.sleep(0.02)
 
-def display_results(result, search_query, search_button, explanation_func, viz_func):
-    response_placeholder = st.empty()
-    
-    if result.get('results') is not None and not result['results'].empty:
-        df = result['results']
-        explanation = explanation_func(df, search_query)
-        
-        if search_button or 'last_streamed_query' not in st.session_state or st.session_state.last_streamed_query != search_query:
-            stream_text(explanation, response_placeholder)
-            st.session_state.last_streamed_query = search_query
-        else:
-            response_placeholder.markdown(explanation)
-        
-        with st.expander("🔍 View Generated SQL Query"):
-            st.code(result['sql'], language='sql')
-        
-        st.markdown("#### 📋 Results")
+def display_results(result, search_query, viz_func):
+    """Render the AI Data Analyst response card."""
+    if not result:
+        return
+
+    # Check for error
+    if result.get("error"):
+        st.error(f"❌ Analysis Failed: {result['error']}")
+        if result.get("steps"):
+            with st.expander("🤖 Agent Steps (Debug Trace)", expanded=True):
+                for s in result["steps"]:
+                    st.write(s)
+        return
+
+    # 1. Answer Card
+    st.markdown("### 💡 Answer")
+    st.info(result.get("answer", "Analysis completed."))
+
+    # 2. Business Insight
+    if result.get("business_insight"):
+        st.markdown("### 📈 Business Insight")
+        st.success(result["business_insight"])
+
+    # 3. Recommendations (if available)
+    if result.get("recommendations"):
+        st.markdown("### 🎯 Recommendations")
+        st.markdown(f"> {result['recommendations']}")
+
+    # 4. Collapsible Agent Execution Steps
+    if result.get("steps"):
+        with st.expander("🤖 View Agent Analysis & Reasoning Steps (LangGraph Trace)", expanded=False):
+            for step in result["steps"]:
+                st.write(step)
+
+    # 5. Collapsible SQL Query
+    if result.get("sql"):
+        with st.expander("🔍 View Generated SQL Query", expanded=False):
+            st.code(result["sql"], language="sql")
+
+    # 6. Data Results
+    df = result.get("results")
+    if df is not None and not df.empty:
+        st.markdown(f"#### 📋 Query Results ({len(df)} rows)")
         st.dataframe(df, use_container_width=True, hide_index=True)
-        
+
+        # 7. Visualization
         viz_options = viz_func.get_visualization_options(df)
-        
         if viz_options:
             st.markdown("#### 📊 Visualization")
-            
-            col_viz, col_empty = st.columns([2, 3])
-            
+
+            # Default to agent's suggested viz type if available
+            recommended = result.get("visualization_type", "")
+            default_index = 0
+            if recommended:
+                for idx, opt in enumerate(viz_options):
+                    if recommended.lower() in opt.lower():
+                        default_index = idx
+                        break
+
+            col_viz, _ = st.columns([2, 3])
             with col_viz:
                 selected_viz = st.selectbox(
-                    "Choose visualization type:",
+                    "Chart Type:",
                     options=viz_options,
-                    index=0,
+                    index=default_index,
                     key="viz_selector"
                 )
-            
+
             if selected_viz:
                 chart = viz_func.create_visualization(df, selected_viz)
                 if chart:
                     st.pyplot(chart, use_container_width=True)
                     import matplotlib.pyplot as plt
                     plt.close(chart)
-                else:
-                    st.info(f"Unable to create {selected_viz}.")
         else:
-            st.info("This data is best displayed in table format.")
-    
+            if len(df) == 1:
+                st.caption("ℹ️ Single aggregate value displayed above. Graphical chart unnecessary.")
     else:
-        stream_text("No results found. Try a different query.", response_placeholder)
+        st.warning("No records matched your criteria.")
