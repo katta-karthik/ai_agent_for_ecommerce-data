@@ -14,10 +14,47 @@ def setup_page_config():
     )
 
 
+MAX_SESSION_QUERIES = 3
+
+
 def create_sidebar():
     with st.sidebar:
         st.title("🛒 Agentic Analytics")
         st.caption("Powered by **LangGraph** & **SQLite**")
+
+        # Quota Protection Status
+        st.markdown("### 🛡️ Quota Protection")
+        queries_used = st.session_state.get("queries_used", 0)
+        custom_key = st.session_state.get("custom_api_key", "").strip()
+
+        if custom_key:
+            st.success("🔑 Personal API Key active — Unlimited queries")
+        else:
+            remaining = max(0, MAX_SESSION_QUERIES - queries_used)
+            if remaining > 0:
+                st.info(f"📊 **{remaining} of {MAX_SESSION_QUERIES} queries left**")
+            else:
+                st.warning("⚠️ **Session limit reached (3/3 used)**")
+            st.caption("Rate-limits queries per visitor session to protect shared host token budget.")
+
+        with st.expander("🔑 Use Your Own API Key (Optional)", expanded=False):
+            key_input = st.text_input(
+                "Gemini or Groq API Key:",
+                type="password",
+                value=st.session_state.get("custom_api_key", ""),
+                help="Enter your own key to bypass the demo session quota.",
+                key="custom_api_key_input"
+            )
+            if key_input and key_input != st.session_state.get("custom_api_key", ""):
+                st.session_state.custom_api_key = key_input.strip()
+                st.rerun()
+
+        if st.session_state.get("queries_used", 0) > 0 and not custom_key:
+            if st.button("🔄 Reset Query Count", use_container_width=True):
+                st.session_state.queries_used = 0
+                st.rerun()
+
+        st.divider()
 
         # Live Dataset Overview
         try:
@@ -79,6 +116,16 @@ def create_sidebar():
 def create_search_interface():
     st.title("🛒 E-commerce AI Analytics")
     st.markdown("*Ask any business or analytics question in natural language. The LangGraph agent plans, validates, executes SQL, and generates insights.*")
+
+    queries_used = st.session_state.get("queries_used", 0)
+    custom_key = st.session_state.get("custom_api_key", "").strip()
+    remaining = max(0, MAX_SESSION_QUERIES - queries_used)
+
+    if not custom_key:
+        if remaining > 0:
+            st.caption(f"⚡ Live Demo Quota: **{remaining} of {MAX_SESSION_QUERIES} queries remaining** in this session.")
+        else:
+            st.warning("⚠️ **Session limit reached (3/3 queries used).** Live queries are paused for this session to preserve token quota. You can still click the pre-set demo questions on the left or add a personal API key in the sidebar.")
 
     col1, col2, col3 = st.columns([1, 4, 1])
 

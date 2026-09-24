@@ -54,11 +54,13 @@ class AgentState(TypedDict):
     needs_visualization: bool
     visualization_type: Optional[str]
     steps: List[str]
+    api_key: Optional[str]
 
 
-def get_llm():
+def get_llm(custom_api_key: Optional[str] = None):
     """Factory to get available LLM: prefers Google Gemini if GOOGLE_API_KEY exists, else Groq."""
-    google_api_key = os.getenv("GOOGLE_API_KEY")
+    # Check custom key first, then environment
+    google_api_key = custom_api_key or os.getenv("GOOGLE_API_KEY")
     if google_api_key and google_api_key != "your_gemini_api_key_here":
         try:
             from langchain_google_genai import ChatGoogleGenerativeAI
@@ -70,7 +72,7 @@ def get_llm():
         except Exception:
             pass
 
-    groq_api_key = os.getenv("GROQ_API_KEY")
+    groq_api_key = custom_api_key or os.getenv("GROQ_API_KEY")
     if groq_api_key and groq_api_key != "your_groq_api_key_here":
         try:
             return ChatGroq(
@@ -90,7 +92,7 @@ def analyze_and_plan(state: AgentState) -> Dict[str, Any]:
     steps = list(state.get("steps", []))
     steps.append(f"[ANALYZE] Question: '{question}'")
     
-    llm = get_llm()
+    llm = get_llm(state.get("api_key"))
     if llm:
         try:
             structured_planner = llm.with_structured_output(QueryPlan)
@@ -211,7 +213,7 @@ def correct_sql(state: AgentState) -> Dict[str, Any]:
     steps = list(state.get("steps", []))
     steps.append(f"[RETRY] Correcting SQL (Attempt {retry_count} of 2) following error: {error_msg}")
 
-    llm = get_llm()
+    llm = get_llm(state.get("api_key"))
     corrected_sql = previous_sql
     if llm:
         try:
@@ -259,7 +261,7 @@ def synthesize_insight(state: AgentState) -> Dict[str, Any]:
             "steps": steps,
         }
 
-    llm = get_llm()
+    llm = get_llm(state.get("api_key"))
     if llm:
         try:
             structured_insight = llm.with_structured_output(AgentInsight)
