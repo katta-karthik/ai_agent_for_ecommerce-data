@@ -8,7 +8,11 @@ from ui.components import (
     create_sidebar,
     create_search_interface,
     display_results,
-    MAX_SESSION_QUERIES,
+)
+from core.rate_limiter import (
+    check_rate_limit,
+    record_query_usage,
+    MAX_QUERIES_PER_IP_PER_DAY,
 )
 from utils import visualization
 
@@ -38,18 +42,15 @@ def main():
         should_run = True
 
     if should_run and query_to_run:
-        queries_used = st.session_state.get("queries_used", 0)
         custom_key = st.session_state.get("custom_api_key", "").strip()
+        allowed, reason = check_rate_limit(has_custom_key=bool(custom_key))
 
-        # Enforce rate limit for shared host key
-        if not custom_key and queries_used >= MAX_SESSION_QUERIES:
+        if not allowed:
             st.warning(
-                f"🛑 **Session Query Limit Reached ({MAX_SESSION_QUERIES}/{MAX_SESSION_QUERIES} queries used)**\n\n"
-                "To ensure all recruiters and hiring managers can test this portfolio application throughout the month without exhausting the shared free API quota, live queries are capped at 3 per visitor session.\n\n"
+                f"🛑 **{reason}**\n\n"
                 "**How to continue testing:**\n"
                 "- 📌 Explore the pre-computed **Demo Questions** on the left.\n"
-                "- 🔑 Provide a free Gemini API key in the sidebar for unlimited queries.\n"
-                "- 🔄 Or click **Reset Query Count** in the sidebar."
+                "- 🔑 Provide your own free Gemini API key in the sidebar for unlimited queries."
             )
         else:
             agent = get_agent()
@@ -57,8 +58,7 @@ def main():
                 result = agent.run(query_to_run, custom_api_key=custom_key if custom_key else None)
                 st.session_state.current_result_obj = result
                 st.session_state.last_executed_query = query_to_run
-                if not custom_key:
-                    st.session_state.queries_used = queries_used + 1
+                record_query_usage(has_custom_key=bool(custom_key))
 
     if st.session_state.get("current_result_obj"):
         display_results(
