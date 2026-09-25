@@ -58,14 +58,15 @@ class AgentState(TypedDict):
 
 
 def get_llm(custom_api_key: Optional[str] = None):
-    """Factory to get available LLM: prefers Google Gemini if GOOGLE_API_KEY exists, else Groq."""
+    """Factory to get available LLM: prefers Google Gemini (gemini-2.5-flash-lite) if GOOGLE_API_KEY exists, else Groq."""
     # Check custom key first, then environment
     google_api_key = custom_api_key or os.getenv("GOOGLE_API_KEY")
     if google_api_key and google_api_key != "your_gemini_api_key_here":
         try:
             from langchain_google_genai import ChatGoogleGenerativeAI
+            # Use gemini-2.5-flash-lite: high free tier quota (1,500 RPD) instead of preview cap
             return ChatGoogleGenerativeAI(
-                model="gemini-2.5-flash",
+                model="gemini-2.5-flash-lite",
                 google_api_key=google_api_key,
                 temperature=0,
             )
@@ -101,7 +102,7 @@ def analyze_and_plan(state: AgentState) -> Dict[str, Any]:
                 HumanMessage(content=f"User question: {question}")
             ])
             steps.append(f"[PLAN] {plan.thought_process}")
-            steps.append(f"[SQL] {plan.sql}")
+            steps.append(f"[SQL] {plan.sql if plan.sql else '(No database query required)'}")
             return {
                 "plan": plan.model_dump(),
                 "sql_query": plan.sql,
@@ -110,7 +111,11 @@ def analyze_and_plan(state: AgentState) -> Dict[str, Any]:
                 "steps": steps,
             }
         except Exception as e:
-            steps.append(f"[WARN] Structured planning error ({str(e)}), using rule-based generator.")
+            err_str = str(e)
+            if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                steps.append("[WARN] Gemini Free Tier quota limit reached (429). Falling back to rule-based analytics engine.")
+            else:
+                steps.append(f"[WARN] Structured planning error ({err_str}), using rule-based generator.")
 
     # Rule-based fallback if no LLM key or error
     q_lower = question.lower()
@@ -164,12 +169,12 @@ def execute_query(state: AgentState) -> Dict[str, Any]:
     steps = list(state.get("steps", []))
 
     if not sql:
-        steps.append("[WARN] No SQL query to execute.")
+        steps.append("[INFO] No SQL query execution required for this question.")
         return {
             "query_result": [],
             "columns": [],
             "row_count": 0,
-            "error": "No SQL query provided.",
+            "error": None,
             "steps": steps,
         }
 
@@ -199,8 +204,14 @@ def execute_query(state: AgentState) -> Dict[str, Any]:
 # Conditional Edge check for retry
 def should_retry(state: AgentState) -> Literal["retry", "continue"]:
     error = state.get("error")
+    sql = state.get("sql_query", "")
     retry_count = state.get("retry_count", 0)
-    if error and retry_count < 2:
+
+    # Only retry if an actual SQL query was attempted and failed with a database error
+    if not sql or not error:
+        return "continue"
+
+    if retry_count < 2:
         return "retry"
     return "continue"
 
@@ -226,7 +237,11 @@ def correct_sql(state: AgentState) -> Dict[str, Any]:
             steps.append(f"[DIAGNOSE] {fix.thought_process}")
             steps.append(f"[SQL_FIXED] {corrected_sql}")
         except Exception as e:
-            steps.append(f"[WARN] SQL correction model error: {str(e)}")
+            err_str = str(e)
+            if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                steps.append("[WARN] Gemini quota limit reached during SQL correction. Using original query.")
+            else:
+                steps.append(f"[WARN] SQL correction model error: {err_str}")
 
     return {
         "sql_query": corrected_sql,
@@ -250,6 +265,21 @@ def synthesize_insight(state: AgentState) -> Dict[str, Any]:
             "answer": f"Unable to retrieve data due to database error: {error}",
             "business_insight": "Please refine your question or verify the requested table columns.",
             "recommendations": None,
+            "steps": steps,
+        }
+
+    # Handle questions where no SQL query could be run (e.g. missing metric like COGS / Profit)
+    if not sql:
+        plan_thought = state.get("plan", {}).get("thought_process", "") if state.get("plan") else ""
+        if plan_thought:
+            answer = plan_thought
+        else:
+            answer = "This question cannot be answered directly from the current database schema."
+
+        return {
+            "answer": answer,
+            "business_insight": "The dataset contains sales revenue, ad spend, and order units, but lacks product manufacturing or acquisition costs (COGS) required for net profit/loss calculations.",
+            "recommendations": "Consider analyzing related metrics such as Return on Ad Spend (ROAS), Total Ad Sales vs Ad Spend, or Top Revenue Items.",
             "steps": steps,
         }
 
@@ -278,7 +308,11 @@ def synthesize_insight(state: AgentState) -> Dict[str, Any]:
                 "steps": steps,
             }
         except Exception as e:
-            steps.append(f"[WARN] Insight synthesis error ({str(e)}), generating standard response.")
+            err_str = str(e)
+            if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                steps.append("[WARN] Gemini quota limit reached. Using rule-based synthesis.")
+            else:
+                steps.append(f"[WARN] Insight synthesis error ({err_str}), generating standard response.")
 
     # Rule-based fallback synthesis
     first_row = rows[0]

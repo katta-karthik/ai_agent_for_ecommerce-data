@@ -21,6 +21,7 @@ RULES FOR SQL GENERATION:
 4. When calculating metrics like average ROAS or CTR, filter out zero division or NULLs (e.g., `WHERE roas > 0` or `WHERE impressions > 0`).
 5. For single-entity or aggregate queries (e.g. "What is total sales?"), use `SELECT SUM(total_sales) as total_sales FROM daily_sales` or check `products`.
 6. Only return clean, executable SQL.
+7. If the user asks for a metric not present in the database (such as profit/loss, COGS, cost of goods, margins, customer demographics), explain clearly in `thought_process` why the metric cannot be calculated from the available schema (mentioning that the schema contains sales and ad spend, but no COGS), and set `sql: ""` (empty string).
 
 RULES FOR VISUALIZATION DECISION:
 - Single scalar values (e.g., "What is total revenue?", "How many products exist?") -> `needs_visualization: false`, `visualization_type: null`.
