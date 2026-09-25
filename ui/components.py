@@ -39,7 +39,7 @@ def create_sidebar():
                 st.info(f"📊 **{remaining} of {MAX_QUERIES_PER_IP_PER_DAY} queries left today**")
             else:
                 st.warning(f"⚠️ **Daily limit reached ({MAX_QUERIES_PER_IP_PER_DAY}/{MAX_QUERIES_PER_IP_PER_DAY} used)**")
-            st.caption("IP-based rate limiting persists across page refreshes to protect shared API tokens.")
+            st.caption("Visitor quota persists across page refreshes to protect shared API tokens.")
 
         with st.expander("🔑 Use Your Own API Key (Optional)", expanded=False):
             key_input = st.text_input(
@@ -121,9 +121,9 @@ def create_search_interface():
 
     if not custom_key:
         if remaining > 0:
-            st.caption(f"⚡ Live Demo Quota: **{remaining} of {MAX_QUERIES_PER_IP_PER_DAY} queries remaining** today (IP-protected).")
+            st.caption(f"⚡ Live Demo Quota: **{remaining} of {MAX_QUERIES_PER_IP_PER_DAY} queries remaining** today.")
         else:
-            st.warning(f"⚠️ **Daily demo limit reached ({MAX_QUERIES_PER_IP_PER_DAY}/{MAX_QUERIES_PER_IP_PER_DAY} queries used).** To prevent quota abuse, live queries are paused for this network today. You can still explore the pre-computed demo questions on the left or add a personal API key in the sidebar.")
+            st.warning(f"⚠️ **Daily demo limit reached ({MAX_QUERIES_PER_IP_PER_DAY}/{MAX_QUERIES_PER_IP_PER_DAY} queries used).** To prevent quota abuse, live queries are paused for your session today. You can still explore the pre-computed demo questions on the left or add a personal API key in the sidebar.")
 
     col1, col2, col3 = st.columns([1, 4, 1])
 
