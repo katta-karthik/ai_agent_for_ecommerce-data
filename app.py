@@ -12,7 +12,7 @@ from ui.components import (
 from core.rate_limiter import (
     check_rate_limit,
     record_query_usage,
-    MAX_QUERIES_PER_IP_PER_DAY,
+    MAX_QUERIES_PER_USER_PER_DAY,
 )
 from utils import visualization
 
