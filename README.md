@@ -2,17 +2,21 @@
 
 <div align="center">
 
+[![Live Demo](https://img.shields.io/badge/🌐%20Live%20Demo-ecommerce--data--agent.streamlit.app-FF4B4B?style=for-the-badge&logo=streamlit)](https://ecommerce-data-agent.streamlit.app/)
 [![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.12-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![Groq LPU](https://img.shields.io/badge/Groq-LPU%20Speed-F55036?style=for-the-badge&logo=fastapi&logoColor=white)](https://groq.com/)
+[![Meta Llama](https://img.shields.io/badge/Meta-Prompt%20Guard%2086M-0467DF?style=for-the-badge&logo=meta&logoColor=white)](https://ai.meta.com/)
 [![LangChain](https://img.shields.io/badge/LangChain-1.4+-1C3C3C?style=for-the-badge&logo=chainlink&logoColor=white)](https://python.langchain.com/)
 [![LangGraph](https://img.shields.io/badge/LangGraph-StateGraph-FF6F00?style=for-the-badge&logo=diagram-next&logoColor=white)](https://langchain-ai.github.io/langgraph/)
-[![Google Gemini](https://img.shields.io/badge/Google%20Gemini-2.5%20Flash-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://ai.google.dev/)
+[![Google Gemini](https://img.shields.io/badge/Google%20Gemini-Flash%20Lite-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://ai.google.dev/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-App-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://streamlit.io/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-REST%20API-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![MCP](https://img.shields.io/badge/MCP-Protocol%20Ready-6B46C1?style=for-the-badge&logo=probot&logoColor=white)](https://modelcontextprotocol.io/)
 
 <p align="center">
   <strong>Transform natural language business questions into validated SQL, self-healing queries, dark-mode charts, and actionable executive insights.</strong>
 </p>
+
+> 🌐 **Try the Live App in Your Browser**: **[https://ecommerce-data-agent.streamlit.app/](https://ecommerce-data-agent.streamlit.app/)**
 
 </div>
 
@@ -225,6 +229,8 @@ streamlit run app.py
 ```
 Open your browser at **[http://localhost:8501](http://localhost:8501)**.
 
+> 🌐 **Live Cloud Demo**: Don't want to run locally? Experience the deployed app at **[https://ecommerce-data-agent.streamlit.app/](https://ecommerce-data-agent.streamlit.app/)**
+
 ---
 
 ## 🔌 API & MCP Integrations
@@ -255,12 +261,22 @@ python mcp/server.py
 
 ---
 
-## 🛡️ Security & Read-Only Protection
+## 🛡️ Security, Guardrails & Protection
 
-The database tool applies strict regular expression and statement inspection before query execution:
-- ✅ **Permitted**: `SELECT`, `WITH` (Common Table Expressions).
-- ❌ **Strictly Blocked**: `DROP`, `DELETE`, `INSERT`, `UPDATE`, `ALTER`, `TRUNCATE`, `CREATE`, `ATTACH`, `DETACH`, `PRAGMA`.
-- Multiple semicolon-delimited SQL injection attempts are actively rejected.
+The platform implements multi-layer enterprise security to safeguard production data:
+
+1. **AI Security Firewall (`meta-llama/llama-prompt-guard-2-86m`)**:
+   - Every incoming question is pre-screened by Meta's dedicated 86M security classifier on Groq.
+   - Detects and immediately blocks prompt injections, jailbreaks, and system prompt override attempts before any SQL planning occurs.
+2. **Read-Only Database Sandbox**:
+   - Enforces strict statement verification via AST and regex inspection.
+   - ✅ **Permitted**: `SELECT`, `WITH` (Common Table Expressions).
+   - ❌ **Strictly Blocked**: `DROP`, `DELETE`, `INSERT`, `UPDATE`, `ALTER`, `TRUNCATE`, `CREATE`, `ATTACH`, `DETACH`, `PRAGMA`.
+   - Multiple semicolon-delimited SQL injection attempts are actively rejected.
+3. **Server-Side IP Rate Limiting & Daily Circuit Breaker**:
+   - Protects against shared token exhaustion by tracking client IP addresses across refreshes (`MAX_QUERIES_PER_IP_PER_DAY = 3`).
+   - Global container circuit breaker (`MAX_GLOBAL_DAILY_QUERIES = 200`) ensures the demo host key remains safe 365 days a year.
+   - Optional custom API key bypass for recruiters and users who want to run unlimited queries.
 
 ---
 
