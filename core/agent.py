@@ -24,12 +24,12 @@ class EcommerceAIAgent:
         self.google_api_key = os.getenv("GOOGLE_API_KEY")
         self.groq_api_key = os.getenv("GROQ_API_KEY")
 
-        if self.google_api_key:
-            print("[INFO] Active LLM Provider: Google Gemini (gemini-2.5-flash)")
-        elif self.groq_api_key:
-            print("[INFO] Active LLM Provider: Groq (llama-3.1-8b-instant)")
+        if self.groq_api_key:
+            print("[INFO] Active LLM Provider: Groq (qwen/qwen3.8-27b) with Llama-Prompt-Guard-2-86m")
+        elif self.google_api_key:
+            print("[INFO] Active LLM Provider: Google Gemini (gemini-2.5-flash-lite)")
         else:
-            print("[NOTICE] No LLM API key found in .env (GOOGLE_API_KEY or GROQ_API_KEY).")
+            print("[NOTICE] No LLM API key found in .env (GROQ_API_KEY or GOOGLE_API_KEY).")
             print("         Using built-in SQL planning rules until an API key is configured.")
 
     def run(self, question: str, custom_api_key: Optional[str] = None, *args, **kwargs) -> Dict[str, Any]:

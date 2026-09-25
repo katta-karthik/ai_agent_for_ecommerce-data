@@ -57,29 +57,50 @@ class AgentState(TypedDict):
     api_key: Optional[str]
 
 
-def get_llm(custom_api_key: Optional[str] = None):
-    """Factory to get available LLM: prefers Google Gemini (gemini-2.5-flash-lite) if GOOGLE_API_KEY exists, else Groq."""
-    # Check custom key first, then environment
-    google_api_key = custom_api_key or os.getenv("GOOGLE_API_KEY")
-    if google_api_key and google_api_key != "your_gemini_api_key_here":
-        try:
-            from langchain_google_genai import ChatGoogleGenerativeAI
-            # Use gemini-2.5-flash-lite: high free tier quota (1,500 RPD) instead of preview cap
-            return ChatGoogleGenerativeAI(
-                model="gemini-2.5-flash-lite",
-                google_api_key=google_api_key,
-                temperature=0,
-            )
-        except Exception:
-            pass
+def check_prompt_guard(question: str, custom_api_key: Optional[str] = None) -> tuple[bool, float, str]:
+    """Scan user question for prompt injection or jailbreak using meta-llama/llama-prompt-guard-2-86m on Groq."""
+    groq_api_key = custom_api_key or os.getenv("GROQ_API_KEY")
+    if not groq_api_key or groq_api_key == "your_groq_api_key_here":
+        return True, 0.0, "Prompt guard bypassed (no Groq key configured)"
 
+    try:
+        from groq import Groq
+        client = Groq(api_key=groq_api_key)
+        resp = client.chat.completions.create(
+            model="meta-llama/llama-prompt-guard-2-86m",
+            messages=[{"role": "user", "content": question}],
+        )
+        score_str = resp.choices[0].message.content.strip()
+        risk_score = float(score_str)
+        # Threshold: > 0.85 indicates prompt injection / malicious bypass attempt
+        if risk_score > 0.85:
+            return False, risk_score, f"Prompt injection / jailbreak detected by Llama-Prompt-Guard-2-86m (Risk score: {risk_score:.4f})"
+        return True, risk_score, f"Input verified safe by Llama-Prompt-Guard-2-86m (Risk score: {risk_score:.4f})"
+    except Exception as e:
+        return True, 0.0, f"Prompt guard check skipped ({str(e)})"
+
+
+def get_llm(custom_api_key: Optional[str] = None):
+    """Factory to get available LLM: prefers Groq (qwen/qwen3.8-27b) as main, then Google Gemini."""
     groq_api_key = custom_api_key or os.getenv("GROQ_API_KEY")
     if groq_api_key and groq_api_key != "your_groq_api_key_here":
         try:
             return ChatGroq(
-                model_name="llama-3.1-8b-instant",
+                model_name="qwen/qwen3.8-27b",
                 temperature=0,
                 groq_api_key=groq_api_key,
+            )
+        except Exception:
+            pass
+
+    google_api_key = custom_api_key or os.getenv("GOOGLE_API_KEY")
+    if google_api_key and google_api_key != "your_gemini_api_key_here":
+        try:
+            from langchain_google_genai import ChatGoogleGenerativeAI
+            return ChatGoogleGenerativeAI(
+                model="gemini-2.5-flash-lite",
+                google_api_key=google_api_key,
+                temperature=0,
             )
         except Exception:
             pass
@@ -92,6 +113,25 @@ def analyze_and_plan(state: AgentState) -> Dict[str, Any]:
     question = state["question"]
     steps = list(state.get("steps", []))
     steps.append(f"[ANALYZE] Question: '{question}'")
+
+    # Step 0: Llama Prompt Guard 86M Security Verification
+    is_safe, risk_score, guard_message = check_prompt_guard(question, state.get("api_key"))
+    steps.append(f"[GUARD] 🛡️ {guard_message}")
+
+    if not is_safe:
+        return {
+            "plan": {
+                "thought_process": "Malicious prompt or jailbreak attempt blocked by Llama Prompt Guard security firewall.",
+                "sql": "",
+                "needs_visualization": False,
+                "visualization_type": None,
+            },
+            "sql_query": "",
+            "error": "Query blocked by AI Security Firewall (Prompt Injection / Jailbreak Detected).",
+            "needs_visualization": False,
+            "visualization_type": None,
+            "steps": steps,
+        }
     
     llm = get_llm(state.get("api_key"))
     if llm:
@@ -113,7 +153,7 @@ def analyze_and_plan(state: AgentState) -> Dict[str, Any]:
         except Exception as e:
             err_str = str(e)
             if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
-                steps.append("[WARN] Gemini Free Tier quota limit reached (429). Falling back to rule-based analytics engine.")
+                steps.append("[WARN] LLM rate limit reached (429). Falling back to rule-based analytics engine.")
             else:
                 steps.append(f"[WARN] Structured planning error ({err_str}), using rule-based generator.")
 
