@@ -32,8 +32,9 @@ class EcommerceAIAgent:
             print("[NOTICE] No LLM API key found in .env (GOOGLE_API_KEY or GROQ_API_KEY).")
             print("         Using built-in SQL planning rules until an API key is configured.")
 
-    def run(self, question: str, custom_api_key: Optional[str] = None) -> Dict[str, Any]:
+    def run(self, question: str, custom_api_key: Optional[str] = None, *args, **kwargs) -> Dict[str, Any]:
         """Execute the full LangGraph agent workflow for an analytical question."""
+        api_key = custom_api_key or kwargs.get("api_key") or kwargs.get("custom_key")
         initial_state = {
             "question": question,
             "db_path": self.db_path,
@@ -50,7 +51,7 @@ class EcommerceAIAgent:
             "needs_visualization": False,
             "visualization_type": None,
             "steps": [],
-            "api_key": custom_api_key,
+            "api_key": api_key,
         }
 
         try:
@@ -87,9 +88,9 @@ class EcommerceAIAgent:
                 "error": str(e),
             }
 
-    def query_database(self, question: str) -> Dict[str, Any]:
+    def query_database(self, question: str, *args, **kwargs) -> Dict[str, Any]:
         """Backward-compatible method matching original repository interface."""
-        return self.run(question)
+        return self.run(question, *args, **kwargs)
 
     def get_schema(self) -> str:
         """Inspect database structure."""

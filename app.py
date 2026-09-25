@@ -21,8 +21,7 @@ load_dotenv()
 setup_page_config()
 
 
-@st.cache_resource
-def get_agent():
+def get_agent() -> EcommerceAIAgent:
     return EcommerceAIAgent()
 
 
